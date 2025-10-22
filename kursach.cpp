@@ -5,7 +5,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
-#include <GLFW/glfw3.h>
+#include <glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

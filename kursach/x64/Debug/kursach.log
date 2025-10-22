@@ -1,7 +1,8 @@
 ﻿  kursach.cpp
-C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(578,23): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
-C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(579,21): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
-C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(580,21): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
-C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(605,16): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
-C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(606,16): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
+C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(518,23): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
+C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(519,21): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
+C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(520,21): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
+C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(545,16): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
+C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\kursach.cpp(546,16): warning C4244: инициализация: преобразование "double" в "int", возможна потеря данных
+  LINK : не найден или не выполнена сборка C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\x64\Debug\kursach.exe при последней инкрементной компоновке; выполняется полная компоновка
   kursach.vcxproj -> C:\Users\User\Desktop\учеба\уник\2сем\ds\kursach\x64\Debug\kursach.exe
