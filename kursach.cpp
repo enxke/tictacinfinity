@@ -4,15 +4,13 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_TRUETYPE_IMPLEMENTATION
-
 #include "stb_truetype.h"
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
 #include <limits.h>
-#include <time.h> // Добавлено для бенчмаркинга
 
 // Настройки поля
 #define MAX_CELLS 50
@@ -34,13 +32,13 @@ typedef enum {
 Cell board[MAX_CELLS][MAX_CELLS];
 int board_size = GRID_LINES;
 float offset_x = 0, offset_y = 0;
-int turn = 0;
+int turn = 0; // 0 - X, 1 - O
 GameMode mode = PLAYER_VS_AI;
 GameState state = MENU_MAIN;
 int player_symbol = EMPTY;
 int game_over = 0;
 
-unsigned char ttf_buffer[1 << 20];
+unsigned char ttf_buffer[1 << 20]; // ~1MB
 unsigned char temp_bitmap[512 * 512];
 GLuint font_texture;
 stbtt_bakedchar cdata[96];
@@ -103,10 +101,9 @@ int main() {
         printf("\nSelect Mode:\n");
         printf("1. Player vs Player (PvP)\n");
         printf("2. Player vs Bot (PvE)\n");
-        printf("Enter your choice: 2\n");
+        printf("Enter your choice: ");
         int choice;
         scanf("%d", &choice);
-
 
         if (choice == 1) {
             mode = PLAYER_VS_PLAYER;
@@ -128,7 +125,7 @@ int main() {
                 state = GAME_RUNNING;
                 reset_game();
 
-                ai_move();
+                ai_move(); // Бот делает первый ход как X
                 turn = 0;
                 if (check_win(X)) {
                     printf("Bot wins!\n");
@@ -282,7 +279,7 @@ int check_win(Cell player) {
     return 0;
 }
 
-// УСИЛЕННАЯ ФУНКЦИЯ ОЦЕНКИ ЛИНИИ
+// Подсчёт веса линии вокруг точки
 int count_line(int x, int y, Cell player) {
     const int dirs[4][2] = { {1, 0}, {0, 1}, {1, 1}, {1, -1} };
     int score = 0;
@@ -292,66 +289,34 @@ int count_line(int x, int y, Cell player) {
         int length = 1;
         int open_ends = 0;
 
-        // Вперед
-        int i = 1;
-        while (true) {
-            int nx = x + dx * i;
-            int ny = y + dy * i;
-
+        // В одном направлении
+        for (int step = 1; step <= 5; step++) {
+            int nx = x + dx * step;
+            int ny = y + dy * step;
             if (nx < 0 || nx >= board_size || ny < 0 || ny >= board_size) {
-                break;
-            }
-            if (board[nx][ny] == player) {
-                length++;
-            }
-            else if (board[nx][ny] == EMPTY) {
                 open_ends++;
                 break;
             }
-            else { // Заблокировано противником
-                break;
-            }
-            i++;
+            if (board[nx][ny] == player) length++;
+            else break;
         }
 
-        // Назад
-        i = 1;
-        while (true) {
-            int nx = x - dx * i;
-            int ny = y - dy * i;
-
+        // В другом направлении
+        for (int step = 1; step <= 5; step++) {
+            int nx = x - dx * step;
+            int ny = y - dy * step;
             if (nx < 0 || nx >= board_size || ny < 0 || ny >= board_size) {
-                break;
-            }
-            if (board[nx][ny] == player) {
-                length++;
-            }
-            else if (board[nx][ny] == EMPTY) {
                 open_ends++;
                 break;
             }
-            else { // Заблокировано противником
-                break;
-            }
-            i++;
+            if (board[nx][ny] == player) length++;
+            else break;
         }
 
-        // УСИЛЕННЫЕ ВЕСА:
-        if (length >= 5) {
-            score += 1000000;
-        }
-        else if (length == 4) {
-            if (open_ends == 2) score += 50000; // Открытая 4-ка (Win Threat)
-            else if (open_ends == 1) score += 10000;
-        }
-        else if (length == 3) {
-            if (open_ends == 2) score += 5000; // Открытая 3-ка (Strong Threat)
-            else if (open_ends == 1) score += 1000;
-        }
-        else if (length == 2) {
-            if (open_ends == 2) score += 300;
-            else if (open_ends == 1) score += 100;
-        }
+        if (length >= 5) score += 100000;
+        else if (length == 4 && open_ends >= 1) score += 10000;
+        else if (length == 3 && open_ends >= 1) score += 1000;
+        else if (length == 2 && open_ends >= 1) score += 100;
     }
 
     return score;
@@ -414,9 +379,9 @@ void get_candidate_moves(int* candidate_x, int* candidate_y, int* count) {
     }
 }
 
-// Найти лучший ход (одноуровневый поиск с усиленной эвристикой)
+// Найти лучший ход
 void find_best_move(int* best_x, int* best_y) {
-    int max_score = -2000000; // Увеличено, чтобы соответствовать новым весам
+    int max_score = -1000000;
     *best_x = -1;
     *best_y = -1;
 
@@ -454,12 +419,9 @@ void find_best_move(int* best_x, int* best_y) {
     }
 }
 
-// Ход бота (с замером времени)
+// Ход бота (минимакс)
 void ai_move() {
     if (game_over) return;
-
-    // --- НАЧАЛО ЗАМЕРА ---
-    clock_t start_time = clock();
 
     int best_x = -1, best_y = -1;
 
@@ -473,71 +435,49 @@ void ai_move() {
 
     if (total_moves == 0) {
         board[board_size / 2][board_size / 2] = O;
+        return;
     }
-    else {
 
-        // 1. Если есть выигрышные ходы — делаем их
-        for (int x = 0; x < board_size; x++) {
-            for (int y = 0; y < board_size; y++) {
-                if (board[x][y] == EMPTY) {
+    // Если есть выигрышные ходы — делаем их
+    for (int x = 0; x < board_size; x++) {
+        for (int y = 0; y < board_size; y++) {
+            if (board[x][y] == EMPTY) {
+                board[x][y] = O;
+                if (check_win(O)) return;
+                board[x][y] = EMPTY;
+            }
+        }
+    }
+
+    // Если нужно блокировать игрока — делаем это
+    for (int x = 0; x < board_size; x++) {
+        for (int y = 0; y < board_size; y++) {
+            if (board[x][y] == EMPTY) {
+                board[x][y] = X;
+                if (check_win(X)) {
                     board[x][y] = O;
-                    if (check_win(O)) {
-                        // --- КОНЕЦ ЗАМЕРА ---
-                        clock_t end_time = clock();
-                        double cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0;
-                        printf("AI Move Time: %.2f ms (Immediate Win)\n", cpu_time_used);
-                        return;
-                    }
-                    board[x][y] = EMPTY;
+                    return;
                 }
-            }
-        }
-
-        // 2. Если нужно блокировать игрока — делаем это
-        for (int x = 0; x < board_size; x++) {
-            for (int y = 0; y < board_size; y++) {
-                if (board[x][y] == EMPTY) {
-                    board[x][y] = X;
-                    if (check_win(X)) {
-                        board[x][y] = O;
-                        // --- КОНЕЦ ЗАМЕРА ---
-                        clock_t end_time = clock();
-                        double cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0;
-                        printf("AI Move Time: %.2f ms (Immediate Block)\n", cpu_time_used);
-                        return;
-                    }
-                    board[x][y] = EMPTY;
-                }
-            }
-        }
-
-        // 3. Ищем лучший ход по оценке
-        find_best_move(&best_x, &best_y);
-        if (best_x != -1 && best_y != -1) {
-            board[best_x][best_y] = O;
-        }
-        else {
-            // 4. Если не нашли — случайный ход (на случай пустого поля)
-            for (int x = 0; x < board_size; x++) {
-                for (int y = 0; y < board_size; y++) {
-                    if (board[x][y] == EMPTY) {
-                        board[x][y] = O;
-                        break;
-                    }
-                }
+                board[x][y] = EMPTY;
             }
         }
     }
 
-    // --- КОНЕЦ ЗАМЕРА ---
-    clock_t end_time = clock();
-    double cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0; // Время в мс
+    // Ищем лучший ход по оценке
+    find_best_move(&best_x, &best_y);
+    if (best_x != -1 && best_y != -1) {
+        board[best_x][best_y] = O;
+        return;
+    }
 
-    printf("AI Move Time: %.2f ms\n", cpu_time_used);
-
-    if (check_win(O)) {
-        printf("Bot wins!\n");
-        game_over = 1;
+    // Если не нашли — случайный ход
+    for (int x = 0; x < board_size; x++) {
+        for (int y = 0; y < board_size; y++) {
+            if (board[x][y] == EMPTY) {
+                board[x][y] = O;
+                return;
+            }
+        }
     }
 }
 
@@ -611,7 +551,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         board[cell_x][cell_y] = (turn == 0) ? X : O;
 
         if (check_win(board[cell_x][cell_y])) {
-            printf("Player wins!\n"); // Исправлено: если победил игрок, пишем "Player wins"
+            printf("Player %c wins!\n", board[cell_x][cell_y] == X ? 'X' : 'O');
             game_over = 1;
         }
 
@@ -628,7 +568,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-// Обработка клавиш только р перезапуск
+// Обработка клавиш
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS && key == GLFW_KEY_R) {
         reset_game();
